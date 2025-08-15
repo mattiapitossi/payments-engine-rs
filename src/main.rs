@@ -1,19 +1,13 @@
-use std::{error::Error, io};
+use std::process::exit;
 
-use csv::{ReaderBuilder, Trim::All};
-
-use crate::domain::Transaction;
+use crate::engine::parser;
 
 mod domain;
+mod engine;
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let mut rdr = ReaderBuilder::new()
-        .trim(All) // as we want to accept csv with with whitespaces
-        .from_reader(io::stdin());
-
-    for result in rdr.deserialize() {
-        let record: Transaction = result?;
-        println!("{:?}", record);
+fn main() {
+    if let Err(err) = parser() {
+        print!("err {}", err);
+        exit(1)
     }
-    Ok(())
 }
