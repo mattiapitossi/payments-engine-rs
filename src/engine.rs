@@ -1,11 +1,12 @@
+use std::error::Error;
 use std::io;
-use std::{collections::HashMap, error::Error};
 
 use csv::Trim::All;
 use csv::{ReaderBuilder, Writer};
 use itertools::Itertools;
 
 use crate::dto::{Account, Transaction, TransactionType};
+use crate::validator::validate_transactions;
 
 pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
     let mut reader = ReaderBuilder::new()
@@ -16,6 +17,8 @@ pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
         .deserialize::<Transaction>()
         .collect::<Result<Vec<_>, csv::Error>>()?;
 
+    validate_transactions(&transactions)?;
+
     let grouped_transactions = transactions.into_iter().into_group_map_by(|tx| tx.client); // as
     // we want to preserve the order of the transactions
 
@@ -23,7 +26,7 @@ pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
 
     for (client, tx) in grouped_transactions {
         let account = register_transaction_for_customer(client, tx);
-        writer.serialize(account)?;
+        writer.serialize(account?)?;
     }
 
     writer.flush()?;
@@ -31,7 +34,10 @@ pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn register_transaction_for_customer(client_id: u16, transactions: Vec<Transaction>) -> Account {
+fn register_transaction_for_customer(
+    client_id: u16,
+    transactions: Vec<Transaction>,
+) -> anyhow::Result<Account> {
     let mut account = Account::default().client(client_id);
 
     // Whether the transaction is under_dispute, use to check when we receive a resolve
@@ -40,16 +46,16 @@ fn register_transaction_for_customer(client_id: u16, transactions: Vec<Transacti
     for tx in &transactions {
         match tx.r#type {
             TransactionType::Deposit => {
-                account.deposit(tx.amount);
+                account.deposit(tx.amount()?);
             }
             TransactionType::Withdrawal => {
-                account.withdraw(tx.amount);
+                account.withdraw(tx.amount()?);
             }
             TransactionType::Dispute => {
                 // we assume that a dispute for a non-existing transaction can be ignored since is
                 // an error from partner
                 if let Some(t) = transactions.iter().find(|t| t.tx == tx.tx) {
-                    account.dispute(t);
+                    account.dispute(t)?;
                     under_dispute.push(t);
                 }
             }
@@ -61,14 +67,14 @@ fn register_transaction_for_customer(client_id: u16, transactions: Vec<Transacti
                     .enumerate()
                     .find(|(_, t)| t.tx == tx.tx)
                 {
-                    account.resolve(t);
+                    account.resolve(t)?;
                     under_dispute.remove(idx);
                 }
             }
         }
     }
 
-    account
+    Ok(account)
 }
 
 #[cfg(test)]
@@ -87,14 +93,14 @@ mod tests {
             r#type: TransactionType::Deposit,
             client,
             tx: 1,
-            amount: dec!(10),
+            amount: Some(dec!(10)),
         };
 
         let tx2 = Transaction {
             r#type: TransactionType::Withdrawal,
             client,
             tx: 2,
-            amount: dec!(5),
+            amount: Some(dec!(5)),
         };
 
         let transactions = vec![tx1, tx2];
@@ -107,7 +113,7 @@ mod tests {
             locked: false,
         };
 
-        let actual = register_transaction_for_customer(client, transactions);
+        let actual = register_transaction_for_customer(client, transactions).unwrap();
 
         assert_eq!(actual, expected)
     }

@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
@@ -7,7 +8,22 @@ pub struct Transaction {
     pub client: u16,
     /// The globally unique id of the transaction
     pub tx: u32,
-    pub amount: Decimal,
+    /// Amount is required only for deposit or a withdrawal
+    pub amount: Option<Decimal>,
+}
+
+impl Transaction {
+    pub fn amount(&self) -> anyhow::Result<Decimal> {
+        match self.r#type {
+            TransactionType::Deposit | TransactionType::Withdrawal => match self.amount {
+                Some(r) => Ok(r),
+                None => Err(anyhow!("is")),
+            },
+            _ => Err(anyhow!(
+                "requested an amount for a type that does not have it"
+            )),
+        }
+    }
 }
 
 /// Types of allowed Transaction
@@ -50,14 +66,16 @@ impl Account {
         self.total = self.available + self.held;
     }
 
-    pub fn dispute(&mut self, transaction: &Transaction) {
-        self.available -= transaction.amount;
-        self.held += transaction.amount;
+    pub fn dispute(&mut self, transaction: &Transaction) -> anyhow::Result<()> {
+        self.available -= transaction.amount()?;
+        self.held += transaction.amount()?;
         //total remains the same as we are only moving from available to held
+        Ok(())
     }
 
-    pub fn resolve(&mut self, transaction: &Transaction) {
-        self.held -= transaction.amount;
-        self.available += transaction.amount;
+    pub fn resolve(&mut self, transaction: &Transaction) -> anyhow::Result<()> {
+        self.held -= transaction.amount()?;
+        self.available += transaction.amount()?;
+        Ok(())
     }
 }
