@@ -16,6 +16,7 @@ pub struct Transaction {
 pub enum TransactionType {
     Deposit, //TODO: check type is string
     Withdrawal,
+    Dispute,
     //TODO: implement other types
 }
 
@@ -44,5 +45,11 @@ impl Account {
     pub fn withdraw(&mut self, amount: Decimal) {
         self.available -= amount;
         self.total = self.available + self.held;
+    }
+
+    pub fn dispute(&mut self, transaction: &Transaction) {
+        self.available -= transaction.amount;
+        self.held += transaction.amount;
+        //total remains the same as we are only moving from available to held
     }
 }

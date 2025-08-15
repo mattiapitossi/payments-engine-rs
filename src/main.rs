@@ -7,14 +7,12 @@ use clap::Parser;
 mod dto;
 mod engine;
 
-
 #[derive(Parser)]
 struct Cli {
-    path: String
+    path: String,
 }
 
 fn main() {
-
     let args = Cli::parse();
 
     if let Err(err) = parser(args.path) {

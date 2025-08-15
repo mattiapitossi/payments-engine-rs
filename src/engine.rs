@@ -34,13 +34,20 @@ pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
 fn register_transaction_for_customer(client_id: u16, transactions: Vec<Transaction>) -> Account {
     let mut account = Account::default().client(client_id);
 
-    for tx in transactions {
+    for tx in &transactions {
         match tx.r#type {
             TransactionType::Deposit => {
                 account.deposit(tx.amount);
             }
             TransactionType::Withdrawal => {
                 account.withdraw(tx.amount);
+            }
+            TransactionType::Dispute => {
+                // we assume that a dispute for a non-existing transaction can be ignored since is
+                // an error from partner
+                if let Some(t) = transactions.iter().find(|t| t.tx == tx.tx) {
+                    account.dispute(t);
+                }
             }
         }
     }
