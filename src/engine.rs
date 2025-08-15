@@ -34,6 +34,9 @@ pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
 fn register_transaction_for_customer(client_id: u16, transactions: Vec<Transaction>) -> Account {
     let mut account = Account::default().client(client_id);
 
+    // Whether the transaction is under_dispute, use to check when we receive a resolve
+    let mut under_dispute: Vec<&Transaction> = Vec::new();
+
     for tx in &transactions {
         match tx.r#type {
             TransactionType::Deposit => {
@@ -47,6 +50,19 @@ fn register_transaction_for_customer(client_id: u16, transactions: Vec<Transacti
                 // an error from partner
                 if let Some(t) = transactions.iter().find(|t| t.tx == tx.tx) {
                     account.dispute(t);
+                    under_dispute.push(t);
+                }
+            }
+            TransactionType::Resolve => {
+                // We assume that if the transaction is not under dispute it is a partner error,
+                // therefore we can ignore the resolve req
+                if let Some((idx, t)) = under_dispute
+                    .iter()
+                    .enumerate()
+                    .find(|(_, t)| t.tx == tx.tx)
+                {
+                    account.resolve(t);
+                    under_dispute.remove(idx);
                 }
             }
         }

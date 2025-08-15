@@ -17,6 +17,9 @@ pub enum TransactionType {
     Deposit, //TODO: check type is string
     Withdrawal,
     Dispute,
+    /// A transaction to resolve a dispute,
+    /// This unlocks the helds funds and makes it available for the customer
+    Resolve,
     //TODO: implement other types
 }
 
@@ -51,5 +54,10 @@ impl Account {
         self.available -= transaction.amount;
         self.held += transaction.amount;
         //total remains the same as we are only moving from available to held
+    }
+
+    pub fn resolve(&mut self, transaction: &Transaction) {
+        self.held -= transaction.amount;
+        self.available += transaction.amount;
     }
 }
