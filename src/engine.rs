@@ -1,9 +1,9 @@
+use std::collections::HashMap;
 use std::error::Error;
 use std::io;
 
 use csv::Trim::All;
 use csv::{ReaderBuilder, Writer};
-use itertools::Itertools;
 
 use crate::dto::{Account, Transaction, TransactionType};
 use crate::validator::validate_transactions;
@@ -19,14 +19,12 @@ pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
 
     validate_transactions(&transactions)?;
 
-    let grouped_transactions = transactions.into_iter().into_group_map_by(|tx| tx.client); // as
-    // we want to preserve the order of the transactions
-
     let mut writer = Writer::from_writer(io::stdout());
 
-    for (client, tx) in grouped_transactions {
-        let account = register_transaction_for_customer(client, tx);
-        writer.serialize(account?)?;
+    let accounts = register_transactions_for_customers(&transactions)?;
+
+    for account in accounts {
+        writer.serialize(account)?;
     }
 
     writer.flush()?;
@@ -34,16 +32,19 @@ pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn register_transaction_for_customer(
-    client_id: u16,
-    transactions: Vec<Transaction>,
-) -> anyhow::Result<Account> {
-    let mut account = Account::default().client(client_id);
+fn register_transactions_for_customers(
+    transactions: &[Transaction],
+) -> anyhow::Result<Vec<Account>> {
+    let mut accounts: HashMap<u16, Account> = HashMap::new();
 
     // Whether the transaction is under_dispute, use to check when we receive a resolve
     let mut under_dispute: Vec<&Transaction> = Vec::new();
 
-    for tx in &transactions {
+    for tx in transactions {
+        let account = accounts
+            .entry(tx.client)
+            .or_insert(Account::default().client(tx.client));
+
         // When the account is locked, the customer cannot perform additional requests
         if account.locked {
             break;
@@ -94,7 +95,7 @@ fn register_transaction_for_customer(
         }
     }
 
-    Ok(account)
+    Ok(accounts.into_values().collect())
 }
 
 #[cfg(test)]
@@ -125,15 +126,15 @@ mod tests {
 
         let transactions = vec![tx1, tx2];
 
-        let expected = Account {
+        let expected = vec![Account {
             client,
             available: dec!(5),
             held: dec!(0),
             total: dec!(5),
             locked: false,
-        };
+        }];
 
-        let actual = register_transaction_for_customer(client, transactions).unwrap();
+        let actual = register_transactions_for_customers(&transactions).unwrap();
 
         assert_eq!(actual, expected)
     }
