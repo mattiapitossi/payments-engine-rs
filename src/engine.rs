@@ -36,7 +36,7 @@ pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
 
 fn register_transactions_for_customers(
     transactions: &[Transaction],
-) -> anyhow::Result<Vec<Account>> {
+) -> anyhow::Result<Vec<AccountResponse>> {
     //TODO: change this to dto
     let mut accounts: HashMap<u16, Account> = HashMap::new();
     let mut cash_flows: HashMap<u32, CashFlow> = transactions
@@ -66,9 +66,15 @@ fn register_transactions_for_customers(
                 // We assume that a dispute for a non-existing transaction can be ignored since is
                 // an error from partner
                 match cash_flows.get_mut(&tx.tx) {
-                    Some(cf) if cf.client == tx.client => {
+                    Some(cf) if cf.client == tx.client && !cf.under_dispute => {
                         account.dispute(cf);
-                        cf.under_dispute(true); //TODO: what if already under dispute
+                        cf.under_dispute(true);
+                    }
+                    Some(_) => {
+                        log::warn!(
+                            "tx {}: received a dispute request for a transaction that is already under dispute, discarding the request",
+                            tx.tx
+                        );
                     }
                     _ => {
                         log::warn!(
@@ -113,7 +119,7 @@ fn register_transactions_for_customers(
         }
     }
 
-    Ok(accounts.into_values().collect())
+    Ok(accounts.into_values().map(AccountResponse::from).collect())
 }
 
 #[cfg(test)]
@@ -146,7 +152,7 @@ mod tests {
 
         let transactions = vec![tx1, tx2];
 
-        let expected = vec![Account {
+        let expected = vec![AccountResponse {
             client,
             available: dec!(5),
             held: dec!(0),
@@ -181,14 +187,14 @@ mod tests {
         let transactions = vec![tx1, tx2];
 
         let accounts = vec![
-            Account {
+            AccountResponse {
                 client: client1,
                 available: dec!(10),
                 held: dec!(0),
                 total: dec!(10),
                 locked: false,
             },
-            Account {
+            AccountResponse {
                 client: client2,
                 available: dec!(5),
                 held: dec!(0),
@@ -232,7 +238,7 @@ mod tests {
 
         let transactions = vec![tx1, tx2, tx3];
 
-        let expected = vec![Account {
+        let expected = vec![AccountResponse {
             client,
             available: dec!(10),
             held: dec!(0),
@@ -272,7 +278,7 @@ mod tests {
 
         let transactions = vec![tx1, tx2, tx3];
 
-        let expected = vec![Account {
+        let expected = vec![AccountResponse {
             client,
             available: dec!(0),
             held: dec!(0),
@@ -298,7 +304,7 @@ mod tests {
 
         let transactions = vec![tx1];
 
-        let expected = vec![Account {
+        let expected = vec![AccountResponse {
             client,
             available: dec!(0),
             held: dec!(0),

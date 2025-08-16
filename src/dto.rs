@@ -2,6 +2,8 @@ use anyhow::anyhow;
 use rust_decimal::{Decimal, dec};
 use serde::{Deserialize, Serialize};
 
+use crate::domain::Account;
+
 #[derive(Debug, Deserialize)]
 pub struct Transaction {
     pub r#type: TransactionType,
@@ -10,16 +12,6 @@ pub struct Transaction {
     pub tx: u32,
     /// Amount is required only for deposit or a withdrawal
     pub amount: Option<Decimal>,
-}
-
-impl Transaction {
-    fn get_amount_or_error(&self) -> anyhow::Result<Decimal> {
-        match self.amount {
-            Some(v) if v >= dec!(0) => Ok(v),
-            Some(_) => Err(anyhow!("tx {}: has a negative amount", self.tx)),
-            None => Err(anyhow!("tx {}: amount is not present", self.tx)),
-        }
-    }
 }
 
 /// Types of allowed Transaction
@@ -35,7 +27,7 @@ pub enum TransactionType {
     Chargeback,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Eq, PartialEq, Debug, Hash)]
 pub struct AccountResponse {
     pub client: u16,
     pub available: Decimal,
@@ -43,4 +35,17 @@ pub struct AccountResponse {
     pub total: Decimal,
     /// An account is locked when a charge back occurs
     pub locked: bool,
+}
+
+impl From<Account> for AccountResponse {
+    fn from(value: Account) -> Self {
+        AccountResponse {
+            client: value.client,
+            available: value.available.round_dp(4), // default values, but makes it explicit that
+            // we want 4 decimals
+            held: value.held.round_dp(4),
+            total: value.total.round_dp(4),
+            locked: value.locked,
+        }
+    }
 }

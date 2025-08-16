@@ -43,5 +43,7 @@ pub fn validate_transactions(transactions: &[Transaction]) -> anyhow::Result<()>
         ));
     }
 
+    //TODO: validate if decimal >4
+
     Ok(())
 }
