@@ -20,8 +20,17 @@ Validations:
 
 if any error occurs, the validation message goes to stdout.
 
-example CSV result when prompting a wrong path:
-`An error occurred during the processing: No such file or directory (os error 2)`
+- example CSV result when prompting a wrong path: `An error occurred during the processing: No such file or directory (os error 2)`
+- example CSV result when tx ids are not unique: `An error occurred during the processing: Transaction ids are not unique!`
+
+
+## examples
+
+The project includes an examples folder that can be used to run the program:
+
+For example, a chargeback can be run as follows:
+
+`cargo run -- examples/chargeback.csv > out.csv`
 
 ## roadmap
 - DB layer for persistence
