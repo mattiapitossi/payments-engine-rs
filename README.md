@@ -18,7 +18,10 @@ Validations:
 - the transaction id should be unique, if two or more transactions have the same id the process will fail
 - the amount is mandatory for deposit or withdrawal, if it's missing or has a negative value the process will fail
 
-if any error occurs, the validation prints to stdout
+if any error occurs, the validation message goes to stdout.
+
+example CSV result when prompting a wrong path:
+`An error occurred during the processing: No such file or directory (os error 2)`
 
 ## roadmap
 - DB layer for persistence
