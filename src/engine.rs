@@ -37,7 +37,8 @@ fn register_transactions_for_customers(
 ) -> anyhow::Result<Vec<Account>> {
     let mut accounts: HashMap<u16, Account> = HashMap::new();
 
-    // Whether the transaction is under_dispute, use to check when we receive a resolve
+    // Whether the transaction is under_dispute, use to check when we receive a resolve or
+    // chargeback request
     let mut under_dispute: Vec<&Transaction> = Vec::new();
 
     for tx in transactions {
@@ -107,7 +108,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_register_transaction_for_customer() {
+    fn test_deposit_and_withdrawal() {
         let client = 1;
 
         let tx1 = Transaction {
@@ -132,6 +133,129 @@ mod tests {
             held: dec!(0),
             total: dec!(5),
             locked: false,
+        }];
+
+        let actual = register_transactions_for_customers(&transactions).unwrap();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_multiple_accounts() {
+        let client1 = 1;
+        let client2 = 2;
+
+        let tx1 = Transaction {
+            r#type: TransactionType::Deposit,
+            client: client1,
+            tx: 1,
+            amount: Some(dec!(10)),
+        };
+
+        let tx2 = Transaction {
+            r#type: TransactionType::Deposit,
+            client: client2,
+            tx: 2,
+            amount: Some(dec!(5)),
+        };
+
+        let transactions = vec![tx1, tx2];
+
+        let expected = vec![
+            Account {
+                client: client1,
+                available: dec!(10),
+                held: dec!(0),
+                total: dec!(10),
+                locked: false,
+            },
+            Account {
+                client: client2,
+                available: dec!(5),
+                held: dec!(0),
+                total: dec!(5),
+                locked: false,
+            },
+        ];
+
+        let actual = register_transactions_for_customers(&transactions).unwrap();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_resolve_dispute() {
+        let client = 1;
+
+        let tx1 = Transaction {
+            r#type: TransactionType::Deposit,
+            client,
+            tx: 1,
+            amount: Some(dec!(10)),
+        };
+
+        let tx2 = Transaction {
+            r#type: TransactionType::Dispute,
+            client,
+            tx: 1,
+            amount: None,
+        };
+
+        let tx3 = Transaction {
+            r#type: TransactionType::Resolve,
+            client,
+            tx: 1,
+            amount: None,
+        };
+
+        let transactions = vec![tx1, tx2, tx3];
+
+        let expected = vec![Account {
+            client,
+            available: dec!(10),
+            held: dec!(0),
+            total: dec!(10),
+            locked: false,
+        }];
+
+        let actual = register_transactions_for_customers(&transactions).unwrap();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_handle_chargeback() {
+        let client = 1;
+
+        let tx1 = Transaction {
+            r#type: TransactionType::Deposit,
+            client,
+            tx: 1,
+            amount: Some(dec!(10)),
+        };
+
+        let tx2 = Transaction {
+            r#type: TransactionType::Dispute,
+            client,
+            tx: 1,
+            amount: None,
+        };
+
+        let tx3 = Transaction {
+            r#type: TransactionType::Chargeback,
+            client,
+            tx: 1,
+            amount: None,
+        };
+
+        let transactions = vec![tx1, tx2, tx3];
+
+        let expected = vec![Account {
+            client,
+            available: dec!(0),
+            held: dec!(0),
+            total: dec!(0),
+            locked: true,
         }];
 
         let actual = register_transactions_for_customers(&transactions).unwrap();
