@@ -35,71 +35,12 @@ pub enum TransactionType {
     Chargeback,
 }
 
-/// A snapshot of clients' accounts after processing the transactions
-#[derive(Debug, Default, PartialEq, Serialize, Eq, Hash)]
-pub struct Account {
-    //TODO: output with 4 decimal places
+#[derive(Serialize)]
+pub struct AccountResponse {
     pub client: u16,
     pub available: Decimal,
     pub held: Decimal,
     pub total: Decimal,
     /// An account is locked when a charge back occurs
     pub locked: bool,
-}
-
-impl Account {
-    pub fn client(mut self, client: u16) -> Account {
-        self.client = client;
-        self
-    }
-
-    pub fn deposit(&mut self, transaction: &Transaction) -> anyhow::Result<()> {
-        let amount = transaction.get_amount_or_error()?;
-        self.available += amount;
-        self.total = self.available + self.held;
-        Ok(())
-    }
-
-    pub fn withdraw(&mut self, transaction: &Transaction) -> anyhow::Result<()> {
-        // We are assuming that this should not block the operations, a customer that requires more
-        // than the available results in ignoring the operation and logging the error
-        let amount = transaction.get_amount_or_error()?;
-        if amount <= self.available {
-            self.available -= amount;
-            self.total = self.available + self.held;
-        } else {
-            log::error!(
-                "user {} does not have enough money to perform a withdraw",
-                self.client
-            )
-        }
-        Ok(())
-    }
-
-    pub fn dispute(&mut self, transaction: &Transaction) -> anyhow::Result<()> {
-        let amount = transaction.get_amount_or_error()?;
-        self.available -= amount;
-        self.held += amount;
-        //total remains the same as we are only moving from available to held
-        Ok(())
-    }
-
-    pub fn resolve(&mut self, transaction: &Transaction) -> anyhow::Result<()> {
-        let amount = transaction.get_amount_or_error()?;
-        self.held -= amount;
-        self.available += amount;
-        Ok(())
-    }
-
-    /// A chargeback related to a transaction, if this occurs the account will be locked
-    /// preventing user to perform additional operations
-    pub fn chargeback(&mut self, transaction: &Transaction) -> anyhow::Result<()> {
-        let amount = transaction.get_amount_or_error()?;
-        // We are assuming that a dispute can lead to a negative balance (e.g., due to a subsequent
-        // withdrawal), therefore we lock the account for the investigations
-        self.locked = true;
-        self.held -= amount;
-        self.total -= amount;
-        Ok(())
-    }
 }

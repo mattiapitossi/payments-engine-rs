@@ -5,7 +5,8 @@ use std::io;
 use csv::Trim::All;
 use csv::{ReaderBuilder, Writer};
 
-use crate::dto::{Account, Transaction, TransactionType};
+use crate::domain::{Account, CashFlow};
+use crate::dto::{AccountResponse, Transaction, TransactionType};
 use crate::validator::validate_transactions;
 
 pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
@@ -36,11 +37,13 @@ pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
 fn register_transactions_for_customers(
     transactions: &[Transaction],
 ) -> anyhow::Result<Vec<Account>> {
+    //TODO: change this to dto
     let mut accounts: HashMap<u16, Account> = HashMap::new();
-
-    // Whether the transaction is under_dispute, use to check when we receive a resolve or
-    // chargeback request
-    let mut under_dispute: Vec<&Transaction> = Vec::new();
+    let mut cash_flows: HashMap<u32, CashFlow> = transactions
+        .iter()
+        .filter_map(|t| CashFlow::try_from(t).ok())
+        .map(|cf| (cf.tx, cf))
+        .collect();
 
     for tx in transactions {
         let account = accounts
@@ -54,59 +57,57 @@ fn register_transactions_for_customers(
 
         match tx.r#type {
             TransactionType::Deposit => {
-                account.deposit(tx)?;
+                account.deposit(&tx.try_into()?)?;
             }
             TransactionType::Withdrawal => {
-                account.withdraw(tx)?;
+                account.withdraw(&tx.try_into()?);
             }
             TransactionType::Dispute => {
                 // We assume that a dispute for a non-existing transaction can be ignored since is
                 // an error from partner
-                if let Some(t) = transactions
-                    .iter()
-                    .find(|t| t.tx == tx.tx && t.client == tx.client)
-                {
-                    account.dispute(t)?;
-                    under_dispute.push(t);
-                } else {
-                    log::warn!(
-                        "tx {}: received a dispute for a non-existing transaction or related to wrong client",
-                        tx.tx
-                    )
+                match cash_flows.get_mut(&tx.tx) {
+                    Some(cf) if cf.client == tx.client => {
+                        account.dispute(cf);
+                        cf.under_dispute(true); //TODO: what if already under dispute
+                    }
+                    _ => {
+                        log::warn!(
+                            "tx {}: received a dispute for a non-existing transaction or related to wrong client",
+                            tx.tx
+                        )
+                    }
                 }
             }
             TransactionType::Resolve => {
                 // We assume that if the transaction is not under dispute it is a partner error,
                 // therefore we can ignore the resolve req
-                if let Some((idx, t)) = under_dispute
-                    .iter()
-                    .enumerate()
-                    .find(|(_, t)| t.tx == tx.tx && t.client == tx.client)
-                {
-                    account.resolve(t)?;
-                    under_dispute.remove(idx);
-                } else {
-                    log::warn!(
-                        "tx {}: received a resolve request for a transaction that is not under dispute or related to wrong client",
-                        tx.tx
-                    )
+                match cash_flows.get_mut(&tx.tx) {
+                    Some(cf) if cf.client == tx.client => {
+                        account.resolve(cf);
+                        cf.under_dispute(false);
+                    }
+                    _ => {
+                        log::warn!(
+                            "tx {}: received a resolve request for a transaction that is not under dispute or related to wrong client",
+                            tx.tx
+                        )
+                    }
                 }
             }
             TransactionType::Chargeback => {
                 // We assume that if the transaction is not under dispute it is a partner error,
                 // therefore we can ignore the Chargeback req
-                if let Some((idx, t)) = under_dispute
-                    .iter()
-                    .enumerate()
-                    .find(|(_, t)| t.tx == tx.tx && t.client == tx.client)
-                {
-                    account.chargeback(t)?;
-                    under_dispute.remove(idx);
-                } else {
-                    log::warn!(
-                        "tx {}: received a chargeback request for a transaction that is not under dispute or related to wrong client",
-                        tx.tx
-                    )
+                match cash_flows.get_mut(&tx.tx) {
+                    Some(cf) if cf.client == tx.client => {
+                        account.chargeback(cf);
+                        cf.under_dispute(false);
+                    }
+                    _ => {
+                        log::warn!(
+                            "tx {}: received a chargeback request for a transaction that is not under dispute or related to wrong client",
+                            tx.tx
+                        )
+                    }
                 }
             }
         }

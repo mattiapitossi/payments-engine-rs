@@ -4,6 +4,7 @@ use crate::engine::parser;
 
 use clap::Parser;
 
+mod domain;
 mod dto;
 mod engine;
 mod validator;
