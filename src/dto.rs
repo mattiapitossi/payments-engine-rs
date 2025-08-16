@@ -9,32 +9,15 @@ pub struct Transaction {
     /// The globally unique id of the transaction
     pub tx: u32,
     /// Amount is required only for deposit or a withdrawal
-    pub amount: Option<Decimal>, //TODO: check amount is positive
+    pub amount: Option<Decimal>,
 }
 
 impl Transaction {
-    // we are only expecting positive amounts
-    fn validate(&self) -> anyhow::Result<&Transaction> {
-        if let Some(amount) = self.amount {
-            if amount >= dec!(0) {
-                Ok(self)
-            } else {
-                Err(anyhow!("amount provided is negative"))
-            } //TODO: add id of the tx in the error
-        } else {
-            Ok(self)
-        }
-    }
-
-    pub fn amount(&self) -> anyhow::Result<Decimal> {
-        match self.r#type {
-            TransactionType::Deposit | TransactionType::Withdrawal => match self.amount {
-                Some(r) => Ok(r),
-                None => Err(anyhow!("is")), //TODO: provide better error explanation
-            },
-            _ => Err(anyhow!(
-                "requested an amount for a type that does not have it"
-            )),
+    fn get_amount_or_error(&self) -> anyhow::Result<Decimal> {
+        match self.amount {
+            Some(v) if v >= dec!(0) => Ok(v),
+            Some(_) => Err(anyhow!("tx {}: has a negative amount", self.tx)),
+            None => Err(anyhow!("tx {}: is not present", self.tx)),
         }
     }
 }
@@ -43,7 +26,7 @@ impl Transaction {
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")] // as our input csv is lowercase
 pub enum TransactionType {
-    Deposit, //TODO: check type is string
+    Deposit,
     Withdrawal,
     Dispute,
     /// A transaction to resolve a dispute,
@@ -70,14 +53,17 @@ impl Account {
         self
     }
 
-    pub fn deposit(&mut self, amount: Decimal) {
+    pub fn deposit(&mut self, transaction: &Transaction) -> anyhow::Result<()> {
+        let amount = transaction.get_amount_or_error()?;
         self.available += amount;
         self.total = self.available + self.held;
+        Ok(())
     }
 
-    pub fn withdraw(&mut self, amount: Decimal) {
+    pub fn withdraw(&mut self, transaction: &Transaction) -> anyhow::Result<()> {
         // We are assuming that this should not block the operations, a customer that requires more
         // than the available results in ignoring the operation and logging the error
+        let amount = transaction.get_amount_or_error()?;
         if amount <= self.available {
             self.available -= amount;
             self.total = self.available + self.held;
@@ -87,27 +73,31 @@ impl Account {
                 self.client
             )
         }
+        Ok(())
     }
 
     pub fn dispute(&mut self, transaction: &Transaction) -> anyhow::Result<()> {
-        self.available -= transaction.amount()?;
-        self.held += transaction.amount()?;
+        let amount = transaction.get_amount_or_error()?;
+        self.available -= amount;
+        self.held += amount;
         //total remains the same as we are only moving from available to held
         Ok(())
     }
 
     pub fn resolve(&mut self, transaction: &Transaction) -> anyhow::Result<()> {
-        self.held -= transaction.amount()?;
-        self.available += transaction.amount()?;
+        let amount = transaction.get_amount_or_error()?;
+        self.held -= amount;
+        self.available += amount;
         Ok(())
     }
 
     /// A chargeback related to a transaction, if this occurs the account will be locked
     /// preventing user to perform additional operations
     pub fn chargeback(&mut self, transaction: &Transaction) -> anyhow::Result<()> {
+        let amount = transaction.get_amount_or_error()?;
         self.locked = true;
-        self.held -= transaction.amount()?;
-        self.total -= transaction.amount()?;
+        self.held -= amount;
+        self.total -= amount;
         Ok(())
     }
 }

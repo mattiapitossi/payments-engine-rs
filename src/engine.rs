@@ -17,6 +17,7 @@ pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
         .deserialize::<Transaction>()
         .collect::<Result<Vec<_>, csv::Error>>()?;
 
+    // Before performing any processing and create account inconsistencies, we validate the entire input file
     validate_transactions(&transactions)?;
 
     let mut writer = Writer::from_writer(io::stdout());
@@ -53,10 +54,10 @@ fn register_transactions_for_customers(
 
         match tx.r#type {
             TransactionType::Deposit => {
-                account.deposit(tx.amount()?);
+                account.deposit(tx)?;
             }
             TransactionType::Withdrawal => {
-                account.withdraw(tx.amount()?);
+                account.withdraw(tx)?;
             }
             TransactionType::Dispute => {
                 // We assume that a dispute for a non-existing transaction can be ignored since is
@@ -64,8 +65,12 @@ fn register_transactions_for_customers(
                 if let Some(t) = transactions.iter().find(|t| t.tx == tx.tx) {
                     account.dispute(t)?;
                     under_dispute.push(t);
+                } else {
+                    log::warn!(
+                        "tx {}: received a dispute for a non-existing transaction",
+                        tx.tx
+                    )
                 }
-                //TODO: add logging
             }
             TransactionType::Resolve => {
                 // We assume that if the transaction is not under dispute it is a partner error,
@@ -77,8 +82,12 @@ fn register_transactions_for_customers(
                 {
                     account.resolve(t)?;
                     under_dispute.remove(idx);
+                } else {
+                    log::warn!(
+                        "tx {}: received a resolve request for a transaction that is not under dispute",
+                        tx.tx
+                    )
                 }
-                //TODO: add logging
             }
             TransactionType::Chargeback => {
                 // We assume that if the transaction is not under dispute it is a partner error,
@@ -90,8 +99,12 @@ fn register_transactions_for_customers(
                 {
                     account.chargeback(t)?;
                     under_dispute.remove(idx);
+                } else {
+                    log::warn!(
+                        "tx {}: received a chargeback request for a transaction that is not under dispute",
+                        tx.tx
+                    )
                 }
-                //TODO: add logging
             }
         }
     }
