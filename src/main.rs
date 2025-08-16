@@ -14,6 +14,8 @@ struct Cli {
 }
 
 fn main() {
+    env_logger::init();
+
     let args = Cli::parse();
 
     if let Err(err) = parser(args.path) {

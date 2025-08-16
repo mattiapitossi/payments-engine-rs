@@ -36,3 +36,7 @@ For example, a chargeback can be run as follows:
 ## roadmap
 - DB layer for persistence
 - REST API to communicate via network
+
+## develop
+
+A Justfile is provided for simplify the development, run `just check` for checking format and a security audit of deps
