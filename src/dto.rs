@@ -17,7 +17,7 @@ impl Transaction {
         match self.amount {
             Some(v) if v >= dec!(0) => Ok(v),
             Some(_) => Err(anyhow!("tx {}: has a negative amount", self.tx)),
-            None => Err(anyhow!("tx {}: is not present", self.tx)),
+            None => Err(anyhow!("tx {}: amount is not present", self.tx)),
         }
     }
 }
@@ -95,6 +95,8 @@ impl Account {
     /// preventing user to perform additional operations
     pub fn chargeback(&mut self, transaction: &Transaction) -> anyhow::Result<()> {
         let amount = transaction.get_amount_or_error()?;
+        // We are assuming that a dispute can lead to a negative balance (e.g., due to a subsequent
+        // withdrawal), therefore we lock the account for the investigations
         self.locked = true;
         self.held -= amount;
         self.total -= amount;

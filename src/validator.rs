@@ -25,7 +25,7 @@ pub fn validate_transactions(transactions: &[Transaction]) -> anyhow::Result<()>
     // Amount should be present if it's a deposit or a withdrawal
     if let Some(tx_missing_amount) = deposits_and_withdrawals.iter().find(|t| t.amount.is_none()) {
         return Err(anyhow!(
-            "tx {} does not have a valid amount",
+            "tx {}: does not have a valid amount",
             tx_missing_amount.tx
         ));
     }
@@ -38,7 +38,7 @@ pub fn validate_transactions(transactions: &[Transaction]) -> anyhow::Result<()>
     // performed the validation before for deposits and withdrawals
     {
         return Err(anyhow!(
-            "tx {} has a tx_negative amount",
+            "tx {}: has a tx_negative amount",
             tx_negative_amount.tx
         ));
     }
