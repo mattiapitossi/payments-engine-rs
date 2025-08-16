@@ -10,7 +10,7 @@ mod validator;
 
 #[derive(Parser)]
 struct Cli {
-    path: String,
+    path: String, //TODO: check valid path
 }
 
 fn main() {

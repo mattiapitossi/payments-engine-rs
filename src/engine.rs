@@ -44,6 +44,11 @@ fn register_transaction_for_customer(
     let mut under_dispute: Vec<&Transaction> = Vec::new();
 
     for tx in &transactions {
+        // When the account is locked, the customer cannot perform additional requests
+        if account.locked {
+            break;
+        }
+
         match tx.r#type {
             TransactionType::Deposit => {
                 account.deposit(tx.amount()?);
@@ -52,12 +57,13 @@ fn register_transaction_for_customer(
                 account.withdraw(tx.amount()?);
             }
             TransactionType::Dispute => {
-                // we assume that a dispute for a non-existing transaction can be ignored since is
+                // We assume that a dispute for a non-existing transaction can be ignored since is
                 // an error from partner
                 if let Some(t) = transactions.iter().find(|t| t.tx == tx.tx) {
                     account.dispute(t)?;
                     under_dispute.push(t);
                 }
+                //TODO: add logging
             }
             TransactionType::Resolve => {
                 // We assume that if the transaction is not under dispute it is a partner error,
@@ -70,6 +76,20 @@ fn register_transaction_for_customer(
                     account.resolve(t)?;
                     under_dispute.remove(idx);
                 }
+                //TODO: add logging
+            }
+            TransactionType::Chargeback => {
+                // We assume that if the transaction is not under dispute it is a partner error,
+                // therefore we can ignore the Chargeback req
+                if let Some((idx, t)) = under_dispute
+                    .iter()
+                    .enumerate()
+                    .find(|(_, t)| t.tx == tx.tx)
+                {
+                    account.chargeback(t)?;
+                    under_dispute.remove(idx);
+                }
+                //TODO: add logging
             }
         }
     }
