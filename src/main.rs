@@ -17,7 +17,7 @@ fn main() {
     let args = Cli::parse();
 
     if let Err(err) = parser(args.path) {
-        print!("err {}", err);
+        print!("An error occurred during the processing: {}", err);
         exit(1)
     }
 }

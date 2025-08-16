@@ -10,7 +10,7 @@ use crate::validator::validate_transactions;
 
 pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
     let mut reader = ReaderBuilder::new()
-        .trim(All) // as we want to accept csv with with whitespaces
+        .trim(All) // as we want to accept CSV with with whitespaces
         .from_path(path)?;
 
     let transactions: Vec<Transaction> = reader

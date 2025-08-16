@@ -40,7 +40,7 @@ impl Transaction {
 }
 
 /// Types of allowed Transaction
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")] // as our input csv is lowercase
 pub enum TransactionType {
     Deposit, //TODO: check type is string
@@ -76,7 +76,7 @@ impl Account {
     }
 
     pub fn withdraw(&mut self, amount: Decimal) {
-        self.available -= amount; //TODO: fail if the funds are not enough
+        self.available -= amount; //TODO: fail if the funds are not enough (only the operation)
         self.total = self.available + self.held;
     }
 

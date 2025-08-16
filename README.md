@@ -18,6 +18,8 @@ Validations:
 - the transaction id should be unique, if two or more transactions have the same id the process will fail
 - the amount is mandatory for deposit or withdrawal, if it's missing or has a negative value the process will fail
 
+if any error occurs, the validation prints to stdout
+
 ## roadmap
 - DB layer for persistence
 - REST API to communicate via network
