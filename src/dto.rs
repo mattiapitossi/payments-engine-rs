@@ -53,7 +53,7 @@ pub enum TransactionType {
 }
 
 /// A snapshot of clients' accounts after processing the transactions
-#[derive(Debug, Default, PartialEq, Serialize)]
+#[derive(Debug, Default, PartialEq, Serialize, Eq, Hash)]
 pub struct Account {
     //TODO: output with 4 decimal places
     pub client: u16,
@@ -76,8 +76,17 @@ impl Account {
     }
 
     pub fn withdraw(&mut self, amount: Decimal) {
-        self.available -= amount; //TODO: fail if the funds are not enough (only the operation)
-        self.total = self.available + self.held;
+        // We are assuming that this should not block the operations, a customer that requires more
+        // than the available results in ignoring the operation and logging the error
+        if amount <= self.available {
+            self.available -= amount;
+            self.total = self.available + self.held;
+        } else {
+            log::error!(
+                "user {} does not have enough money to perform a withdraw",
+                self.client
+            )
+        }
     }
 
     pub fn dispute(&mut self, transaction: &Transaction) -> anyhow::Result<()> {

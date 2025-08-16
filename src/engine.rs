@@ -101,6 +101,8 @@ fn register_transactions_for_customers(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use rust_decimal::dec;
 
     use crate::dto::{Transaction, TransactionType};
@@ -161,7 +163,7 @@ mod tests {
 
         let transactions = vec![tx1, tx2];
 
-        let expected = vec![
+        let accounts = vec![
             Account {
                 client: client1,
                 available: dec!(10),
@@ -178,7 +180,10 @@ mod tests {
             },
         ];
 
-        let actual = register_transactions_for_customers(&transactions).unwrap();
+        let processed_accounts = register_transactions_for_customers(&transactions).unwrap();
+
+        let actual: HashSet<_> = processed_accounts.into_iter().collect();
+        let expected: HashSet<_> = accounts.into_iter().collect();
 
         assert_eq!(actual, expected)
     }
@@ -256,6 +261,32 @@ mod tests {
             held: dec!(0),
             total: dec!(0),
             locked: true,
+        }];
+
+        let actual = register_transactions_for_customers(&transactions).unwrap();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_handle_withdrawal_with_not_enough_money() {
+        let client = 1;
+
+        let tx1 = Transaction {
+            r#type: TransactionType::Withdrawal,
+            client,
+            tx: 1,
+            amount: Some(dec!(10)),
+        };
+
+        let transactions = vec![tx1];
+
+        let expected = vec![Account {
+            client,
+            available: dec!(0),
+            held: dec!(0),
+            total: dec!(0),
+            locked: false,
         }];
 
         let actual = register_transactions_for_customers(&transactions).unwrap();
