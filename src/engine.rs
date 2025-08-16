@@ -62,12 +62,15 @@ fn register_transactions_for_customers(
             TransactionType::Dispute => {
                 // We assume that a dispute for a non-existing transaction can be ignored since is
                 // an error from partner
-                if let Some(t) = transactions.iter().find(|t| t.tx == tx.tx) {
+                if let Some(t) = transactions
+                    .iter()
+                    .find(|t| t.tx == tx.tx && t.client == tx.client)
+                {
                     account.dispute(t)?;
                     under_dispute.push(t);
                 } else {
                     log::warn!(
-                        "tx {}: received a dispute for a non-existing transaction",
+                        "tx {}: received a dispute for a non-existing transaction or related to wrong client",
                         tx.tx
                     )
                 }
@@ -78,13 +81,13 @@ fn register_transactions_for_customers(
                 if let Some((idx, t)) = under_dispute
                     .iter()
                     .enumerate()
-                    .find(|(_, t)| t.tx == tx.tx)
+                    .find(|(_, t)| t.tx == tx.tx && t.client == tx.client)
                 {
                     account.resolve(t)?;
                     under_dispute.remove(idx);
                 } else {
                     log::warn!(
-                        "tx {}: received a resolve request for a transaction that is not under dispute",
+                        "tx {}: received a resolve request for a transaction that is not under dispute or related to wrong client",
                         tx.tx
                     )
                 }
@@ -95,13 +98,13 @@ fn register_transactions_for_customers(
                 if let Some((idx, t)) = under_dispute
                     .iter()
                     .enumerate()
-                    .find(|(_, t)| t.tx == tx.tx)
+                    .find(|(_, t)| t.tx == tx.tx && t.client == tx.client)
                 {
                     account.chargeback(t)?;
                     under_dispute.remove(idx);
                 } else {
                     log::warn!(
-                        "tx {}: received a chargeback request for a transaction that is not under dispute",
+                        "tx {}: received a chargeback request for a transaction that is not under dispute or related to wrong client",
                         tx.tx
                     )
                 }
