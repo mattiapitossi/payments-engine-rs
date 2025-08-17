@@ -15,7 +15,7 @@ Payment engine is responsible for processing customers transactions requests. Ea
 
 ## Domain Entities
 
-- `CashFlow`: a cash flow entity represents either a deposit or a withdrawal transaction, has an under dispute attribute to track the status of a dispute filled by the customer. The amount is not optional in this case. Storing deposit and withdrawal transactions into cash flow entity also allows to perform and upfront validation and subsequently make safe assumption about these two entities.
+- `CashFlow`: a cash flow entity represents either a deposit or a withdrawal transaction, has an under dispute attribute to track the status of a dispute filled by the customer. The amount is not optional in this case. Storing deposit and withdrawal transactions into cash flow entity also allows to perform and upfront validation and subsequently make safe assumptions about these two entities.
 - `Account`: an account represents the latest snapshot of the customer holdings.
 
 ## Future Work
@@ -23,3 +23,5 @@ Payment engine is responsible for processing customers transactions requests. Ea
 A persistence layer could be added to store the domain entity data, the dispute and the subsequent resolution or the chargeback could also be stored and represented by a different domain entity to track and let the cash flow be responsible of tracking only a transaction where the amount is present and if it's under dispute. 
 
 The DB layer will be also useful to process different batches, for example a first batch could indicate that a transaction was charged back, but a second batch could try to perform additional operations related to a locked account.
+
+The engine could also add support for concurrent processing, in this case we should be mindful of concurrent access to the resources and to end up with a consistent result.

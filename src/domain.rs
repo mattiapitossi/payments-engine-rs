@@ -35,7 +35,7 @@ impl TryFrom<&Transaction> for CashFlow {
                     TransactionType::Deposit => CashFlowType::Deposit,
                     TransactionType::Withdrawal => CashFlowType::Withdrawal,
                     _ => {
-                        log::debug!("trying to convert an unsupported transaction to a cash flow");
+                        log::error!("trying to convert an unsupported transaction to a cash flow");
                         return Err(anyhow!(
                             "a generic error occurred", // This is an internal error related to
                                                         // wrong usage of the method, we don't want to expose these details to the

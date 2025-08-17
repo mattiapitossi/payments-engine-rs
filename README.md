@@ -16,11 +16,18 @@ The input CSV should have 4 columns:
 - amount: decimal value with up to 4 decimal places, required only for deposit and withdrawal. 
 
 Validations:
-- the type should be one of the supported ones with lowercase format, if the CSV contains a different transaction type the process will fail
-- the transaction id should be unique, if two or more transactions (related to deposit or withdrawal) have the same id the process will fail
-- the amount is mandatory for deposit or withdrawal, if it's missing, has a negative value, or the scale of the amount is greater than 4 the process will fail
 
-if any error occurs, the validation message goes to stderr
+- blocking:
+  - the type should be one of the supported ones with lowercase format, if the CSV contains a different transaction type the process will fail
+  - the transaction id should be unique, if two or more transactions (related to deposit or withdrawal) have the same id the process will fail
+  - the amount is mandatory for deposit or withdrawal, if it's missing, has a negative value, or the scale of the amount is greater than 4 the process will fail
+- non-blocking:
+  - if a dispute, a resolution or chargeback transaction refers to a non-existing transaction the request will be ignored
+  - if a dispute, a resolution or chargeback transaction refers to an existing transaction but wrong client the request will be ignored
+  - if a resolution or a chargeback transaction refers to an existing transaction and right client, but the transaction is not under dispute the request will be ignored
+  - if a dispute, a resolution, or a chargeback contains an amount, the value will be ignored
+
+if any blocking error occurs, the validation message goes to stderr
 
 - example err when prompting a wrong path (named ex that does not exist): `Error: cannot find path ex`
 - example err when tx ids are not unique: `Error: Transaction ids are not unique!`
