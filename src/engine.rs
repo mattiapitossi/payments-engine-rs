@@ -1,6 +1,5 @@
-use anyhow::anyhow;
+use anyhow::{Context, anyhow};
 use std::collections::HashMap;
-use std::error::Error;
 use std::io;
 
 use csv::Trim::All;
@@ -10,10 +9,11 @@ use crate::domain::{Account, CashFlow};
 use crate::dto::{AccountResponse, Transaction, TransactionType};
 use crate::validator::validate_transactions;
 
-pub fn run(path: String) -> Result<(), Box<dyn Error>> {
+pub fn run(path: &str) -> anyhow::Result<()> {
     let mut reader = ReaderBuilder::new()
         .trim(All) // as we want to accept CSV with with whitespaces
-        .from_path(path)?;
+        .from_path(path)
+        .with_context(|| format!("cannot find path {}", path))?;
 
     let transactions: Vec<Transaction> = reader
         .deserialize::<Transaction>()

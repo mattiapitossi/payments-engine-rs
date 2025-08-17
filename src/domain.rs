@@ -39,7 +39,7 @@ impl TryFrom<&Transaction> for CashFlow {
                         return Err(anyhow!(
                             "a generic error occurred", // This is an internal error related to
                                                         // wrong usage of the method, we don't want to expose these details to the
-                                                        // frontend
+                                                        // clients
                         ));
                     }
                 };

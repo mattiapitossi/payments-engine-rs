@@ -20,10 +20,10 @@ Validations:
 - the transaction id should be unique, if two or more transactions (related to deposit or withdrawal) have the same id the process will fail
 - the amount is mandatory for deposit or withdrawal, if it's missing, has a negative value, or the scale of the amount is greater than 4 the process will fail
 
-if any error occurs, the validation message goes to stdout
+if any error occurs, the validation message goes to stderr
 
-- example CSV result when prompting a wrong path: `An error occurred during the processing: No such file or directory (os error 2)`
-- example CSV result when tx ids are not unique: `An error occurred during the processing: Transaction ids are not unique!`
+- example err when prompting a wrong path (named ex that does not exist): `Error: cannot find path ex`
+- example err when tx ids are not unique: `Error: Transaction ids are not unique!`
 
 
 ## examples
