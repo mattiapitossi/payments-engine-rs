@@ -1,5 +1,5 @@
 # payments-engine-rs
-An implementation of a payment engine to process transactions and update client accounts. See ARCHITECTURE.md in docs for additional design info.
+An implementation of a payment engine to process transactions and update client accounts. See `ARCHITECTURE.md` in docs for additional design info.
 
 
 ## :rocket: features 
@@ -31,8 +31,8 @@ Validations:
 
 if any blocking error occurs, the validation message goes to stderr. This is to separate errors from stdout.
 
-- example err when prompting a wrong path (named ex that does not exist): `Error: cannot find path ex`
-- example err when tx ids are not unique: `Error: Transaction ids are not unique!`
+- example err when prompting a wrong path (e.g., a path named `ex` that does not exist): `Error: cannot find path ex`
+- example err when transaction ids are not unique: `Error: Transaction ids are not unique!`
 
 
 ## examples
