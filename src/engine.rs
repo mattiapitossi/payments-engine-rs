@@ -9,7 +9,7 @@ use crate::domain::{Account, CashFlow};
 use crate::dto::{AccountResponse, Transaction, TransactionType};
 use crate::validator::validate_transactions;
 
-pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
+pub fn run(path: String) -> Result<(), Box<dyn Error>> {
     let mut reader = ReaderBuilder::new()
         .trim(All) // as we want to accept CSV with with whitespaces
         .from_path(path)?;
@@ -17,6 +17,9 @@ pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
     let transactions: Vec<Transaction> = reader
         .deserialize::<Transaction>()
         .collect::<Result<Vec<_>, csv::Error>>()?;
+
+    // Before performing a processing we performe a validation against all transactions
+    validate_transactions(&transactions)?;
 
     let mut writer = Writer::from_writer(io::stdout());
 
@@ -40,9 +43,6 @@ fn register_transactions_for_customers(
         .filter_map(|t| CashFlow::try_from(t).ok())
         .map(|cf| (cf.tx, cf))
         .collect();
-
-    // Before performing any processing and create account inconsistencies, we validate the entire input file
-    validate_transactions(cash_flows.values().collect())?;
 
     for tx in transactions {
         let account = accounts

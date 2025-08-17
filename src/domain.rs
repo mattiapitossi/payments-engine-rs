@@ -28,7 +28,7 @@ impl TryFrom<&Transaction> for CashFlow {
 
     fn try_from(value: &Transaction) -> anyhow::Result<Self> {
         match value.amount {
-            Some(v) if v >= dec!(0) => {
+            Some(v) if v >= dec!(0) && v.scale() <= 4 => {
                 let cash_flow_type = match value.r#type {
                     TransactionType::Deposit => CashFlowType::Deposit,
                     TransactionType::Withdrawal => CashFlowType::Withdrawal,
@@ -49,6 +49,7 @@ impl TryFrom<&Transaction> for CashFlow {
                     under_dispute: false,
                 })
             }
+            Some(v) if v.scale() > 4 => Err(anyhow!("tx {}: has a unsupported scale", value.tx)),
             Some(_) => Err(anyhow!("tx {}: has a negative value", value.tx)),
             None => Err(anyhow!("tx {}: value is missing", value.tx)),
         }
