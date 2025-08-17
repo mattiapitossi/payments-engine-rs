@@ -69,7 +69,7 @@ fn register_transactions_for_customers(
                         account.dispute(cf);
                         cf.under_dispute(true);
                     }
-                    Some(_) => {
+                    Some(cf) if cf.client == tx.client => {
                         log::warn!(
                             "tx {}: received a dispute request for a transaction that is already under dispute, discarding the request",
                             tx.tx
@@ -87,7 +87,7 @@ fn register_transactions_for_customers(
                 // We assume that if the transaction is not under dispute it is a partner error,
                 // therefore we can ignore the resolve req
                 match cash_flows.get_mut(&tx.tx) {
-                    Some(cf) if cf.client == tx.client => {
+                    Some(cf) if cf.client == tx.client && cf.under_dispute => {
                         account.resolve(cf);
                         cf.under_dispute(false);
                     }
@@ -103,7 +103,7 @@ fn register_transactions_for_customers(
                 // We assume that if the transaction is not under dispute it is a partner error,
                 // therefore we can ignore the Chargeback req
                 match cash_flows.get_mut(&tx.tx) {
-                    Some(cf) if cf.client == tx.client => {
+                    Some(cf) if cf.client == tx.client && cf.under_dispute => {
                         account.chargeback(cf);
                         cf.under_dispute(false);
                     }
