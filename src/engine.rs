@@ -96,9 +96,15 @@ fn register_transactions_for_customers(
                     Some(cf) if cf.client == tx.client && cf.under_dispute => {
                         account.resolve(cf);
                     }
-                    _ => {
+                    Some(_) => {
                         log::warn!(
                             "tx {}: received a resolve request for a transaction that is not under dispute or related to wrong client",
+                            tx.tx
+                        )
+                    }
+                    _ => {
+                        log::warn!(
+                            "tx {}: received a resolve request for a transaction that does not exist",
                             tx.tx
                         )
                     }
@@ -111,9 +117,15 @@ fn register_transactions_for_customers(
                     Some(cf) if cf.client == tx.client && cf.under_dispute => {
                         account.chargeback(cf);
                     }
+                    Some(_) => {
+                        log::warn!(
+                            "tx {}: received a resolve request for a transaction that is not under dispute or related to wrong client",
+                            tx.tx
+                        )
+                    }
                     _ => {
                         log::warn!(
-                            "tx {}: received a chargeback request for a transaction that is not under dispute or related to wrong client",
+                            "tx {}: received a chargeback request for a transaction that does not exist",
                             tx.tx
                         )
                     }
