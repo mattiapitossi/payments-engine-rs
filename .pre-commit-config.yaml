@@ -4,21 +4,21 @@ repos:
       - id: cargo-fmt
         name: cargo-fmt
         description: Format files with cargo fmt
-        entry: cargo fmt
+        entry: cargo fmt --
         language: system
         types: [rust]
-        args: ["--"]
+        pass_filenames: true
       - id: cargo-clippy
         name: cargo-clippy
         description: Runs clippy linter
-        entry: cargo clippy
+        entry: cargo clippy --all-targets --all-features
         language: system
         types: [rust]
-        args: ["--"]
+        pass_filenames: false
       - id: cargo-audit
         name: cargo-audit
         description: Runs a security audit for crates
         entry: cargo audit
         language: system
         types: [rust]
-        args: ["--"]
+        pass_filenames: false

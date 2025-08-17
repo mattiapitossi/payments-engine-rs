@@ -51,7 +51,9 @@ impl TryFrom<&Transaction> for CashFlow {
                     under_dispute: false,
                 })
             }
-            Some(v) if v.scale() > 4 => Err(anyhow!("tx {}: has a unsupported scale", value.tx)),
+            Some(v) if v.scale() > 4 => {
+                Err(anyhow!("tx {}: has a unsupported scale (>4)", value.tx))
+            }
             Some(_) => Err(anyhow!("tx {}: has a negative value", value.tx)),
             None => Err(anyhow!("tx {}: value is missing", value.tx)),
         }

@@ -1,2 +1,2 @@
 type, client, tx, amount
-despot, 1, 1, 1.0
+deposit, 1, 1,
