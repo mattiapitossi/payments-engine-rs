@@ -57,7 +57,7 @@ fn register_transactions_for_customers(
 
         // When the account is locked, the customer cannot perform additional requests
         if account.locked {
-            break;
+            continue;
         }
 
         match tx.r#type {
@@ -225,25 +225,27 @@ mod tests {
 
     #[test]
     fn test_handle_chargeback() {
-        let client = 1;
+        let client1 = 1;
+        let client2 = 2;
 
         let transactions = vec![
-            build_transaction(TransactionType::Deposit, client, 1, Some(dec!(10))),
-            build_transaction(TransactionType::Dispute, client, 1, None),
-            build_transaction(TransactionType::Chargeback, client, 1, None),
-            build_transaction(TransactionType::Deposit, client, 2, Some(dec!(10))), // to make sure
-                                                                                    // a client cannot perform additional operation
+            build_transaction(TransactionType::Deposit, client1, 1, Some(dec!(10))),
+            build_transaction(TransactionType::Dispute, client1, 1, None),
+            build_transaction(TransactionType::Chargeback, client1, 1, None),
+            build_transaction(TransactionType::Deposit, client1, 2, Some(dec!(10))), // to make sure
+            // a client cannot perform additional operation
+            build_transaction(TransactionType::Deposit, client2, 3, Some(dec!(10))),
         ];
 
-        let expected = vec![AccountResponse {
-            client,
-            available: dec!(0),
-            held: dec!(0),
-            total: dec!(0),
-            locked: true,
-        }];
+        let accounts = vec![
+            build_account(client1, dec!(0), dec!(0), dec!(0), true),
+            build_account(client2, dec!(10), dec!(0), dec!(10), false),
+        ];
 
-        let actual = register_transactions_for_customers(&transactions).unwrap();
+        let processed_accounts = register_transactions_for_customers(&transactions).unwrap();
+
+        let actual: HashSet<_> = processed_accounts.into_iter().collect();
+        let expected: HashSet<_> = accounts.into_iter().collect();
 
         assert_eq!(actual, expected)
     }
