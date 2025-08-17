@@ -1,15 +1,19 @@
 use anyhow::anyhow;
 use rust_decimal::{Decimal, dec};
 
-use crate::dto::{Transaction, TransactionType};
+use crate::{
+    dto::{Transaction, TransactionType},
+    error::Error,
+};
 
 pub struct CashFlow {
     r#type: CashFlowType,
+    /// Global unique id of the client
     pub client: u16,
-    /// Global unique id
+    /// Global unique id of the transaction
     pub tx: u32,
     pub amount: Decimal,
-    /// Whether the cash flow is under_dispute, use to check when we receive a resolve or chargeback
+    /// Whether the cash flow is under dispute, use to check if there's a dispute request when we receive a resolve or charge back
     pub under_dispute: bool,
 }
 
@@ -74,7 +78,7 @@ impl Account {
         self
     }
 
-    pub fn deposit(&mut self, cf: &CashFlow) -> anyhow::Result<()> {
+    pub fn deposit(&mut self, cf: &CashFlow) -> Result<(), Error> {
         match cf.r#type {
             CashFlowType::Deposit => {
                 let amount = cf.amount;
@@ -83,24 +87,33 @@ impl Account {
                 Ok(())
             }
             _ => {
-                log::debug!("performing a deposit with a cash flow of wrong type");
-                Err(anyhow!("a generic error occurred"))
+                log::error!("performing a deposit with a cash flow of wrong type");
+                Err(Error::OperationNotAllowedError)
             }
         }
     }
 
-    pub fn withdraw(&mut self, cf: &CashFlow) {
+    pub fn withdraw(&mut self, cf: &CashFlow) -> Result<(), Error> {
         // We are assuming that this should not block the operations, a customer that requires more
         // than the available results in ignoring the operation and logging the error
-        let amount = cf.amount;
-        if amount <= self.available {
-            self.available -= amount;
-            self.total = self.available + self.held;
-        } else {
-            log::error!(
-                "user {} does not have enough money to perform a withdraw",
-                self.client
-            )
+        match cf.r#type {
+            CashFlowType::Withdrawal => {
+                let amount = cf.amount;
+                if amount <= self.available {
+                    self.available -= amount;
+                    self.total = self.available + self.held;
+                } else {
+                    log::error!(
+                        "user {} does not have enough money to perform a withdraw",
+                        self.client
+                    )
+                }
+                Ok(())
+            }
+            _ => {
+                log::error!("performing a withdrawal with a cash flow of wrong type");
+                Err(Error::OperationNotAllowedError)
+            }
         }
     }
 

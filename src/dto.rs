@@ -11,7 +11,7 @@ pub struct Transaction {
     pub amount: Option<Decimal>,
 }
 
-/// Types of allowed Transaction
+/// Types of allowed transactions
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")] // as our input csv is lowercase
 pub enum TransactionType {
