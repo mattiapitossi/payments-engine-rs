@@ -29,7 +29,7 @@ Validations:
   - if a dispute, a resolution, or a chargeback contains an amount, the value will be ignored
   - if a locked account performs additional operations, requests will be ignored
 
-if any blocking error occurs, the validation message goes to stderr
+if any blocking error occurs, the validation message goes to stderr. This is to separate errors from stdout.
 
 - example err when prompting a wrong path (named ex that does not exist): `Error: cannot find path ex`
 - example err when tx ids are not unique: `Error: Transaction ids are not unique!`
