@@ -22,6 +22,7 @@ Validations:
   - the transaction id should be unique, if two or more transactions (related to deposit or withdrawal) have the same id the process will fail
   - the amount is mandatory for deposit or withdrawal, if it's missing, has a negative value, or the scale of the amount is greater than 4 the process will fail
 - non-blocking:
+  - if a client request to withdraw more money than available the withdrawal fails, but the processing continues
   - if a dispute, a resolution or chargeback transaction refers to a non-existing transaction the request will be ignored
   - if a dispute, a resolution or chargeback transaction refers to an existing transaction but wrong client the request will be ignored
   - if a resolution or a chargeback transaction refers to an existing transaction and right client, but the transaction is not under dispute the request will be ignored
