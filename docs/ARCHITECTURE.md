@@ -20,6 +20,10 @@ The service responsible for processing the request is the engine, which handles 
 - `CashFlow`: a cash flow entity represents either a deposit or a withdrawal transaction, has an under dispute attribute to track the status of a dispute filled by the customer. The amount is not optional in this case. Storing deposit and withdrawal transactions into cash flow entity also allows to perform and upfront validation and subsequently make safe assumptions about these two entities.
 - `Account`: an account represents the latest snapshot of the customer holdings.
 
+## Data Streaming Considerations
+
+The memory usage for the processing could be improved by streaming data instead of loading everything upfront, this has the downside that the whole batch cannot be validated (e.g. uniqueness of some data) unless we store and check against a DB. A huge dataset could also contain, for example, a wrong amount as the last record, this would mean processing the whole batch and fail at the end.
+
 ## Future Work
 
 A persistence layer could be added to store the domain entity data, the dispute and the subsequent resolution or the chargeback could also be stored and represented by a different domain entity to track and let the cash flow be responsible of tracking only a transaction where the amount is present and if it's under dispute. 
