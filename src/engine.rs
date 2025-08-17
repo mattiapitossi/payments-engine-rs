@@ -19,7 +19,7 @@ pub fn run(path: &str) -> anyhow::Result<()> {
         .deserialize::<Transaction>()
         .collect::<Result<Vec<_>, csv::Error>>()?;
 
-    // Before performing a processing we performe a validation against all transactions
+    // Before performing a processing we perform a validation against all transactions
     validate_transactions(&transactions)?;
 
     let mut writer = Writer::from_writer(io::stdout());
