@@ -57,6 +57,7 @@ fn register_transactions_for_customers(
 
         // When the account is locked, the customer cannot perform additional requests
         if account.locked {
+            log::warn!("tx {}: received a request for a locked account", tx.tx);
             continue;
         }
 
@@ -90,51 +91,49 @@ fn register_transactions_for_customers(
                 }
             }
             TransactionType::Resolve => {
-                // We assume that if the transaction is not under dispute it is a partner error,
-                // therefore we can ignore the resolve req
-                match cash_flows_hm.get_mut(&tx.tx) {
-                    Some(cf) if cf.client == tx.client && cf.under_dispute => {
-                        account.resolve(cf);
-                    }
-                    Some(_) => {
-                        log::warn!(
-                            "tx {}: received a resolve request for a transaction that is not under dispute or related to wrong client",
-                            tx.tx
-                        )
-                    }
-                    _ => {
-                        log::warn!(
-                            "tx {}: received a resolve request for a transaction that does not exist",
-                            tx.tx
-                        )
-                    }
-                }
+                handle_dispute(&mut cash_flows_hm, tx, |cf| account.resolve(cf), "resolve")
             }
-            TransactionType::Chargeback => {
-                // We assume that if the transaction is not under dispute it is a partner error,
-                // therefore we can ignore the chargeback req
-                match cash_flows_hm.get_mut(&tx.tx) {
-                    Some(cf) if cf.client == tx.client && cf.under_dispute => {
-                        account.chargeback(cf);
-                    }
-                    Some(_) => {
-                        log::warn!(
-                            "tx {}: received a resolve request for a transaction that is not under dispute or related to wrong client",
-                            tx.tx
-                        )
-                    }
-                    _ => {
-                        log::warn!(
-                            "tx {}: received a chargeback request for a transaction that does not exist",
-                            tx.tx
-                        )
-                    }
-                }
-            }
+            TransactionType::Chargeback => handle_dispute(
+                &mut cash_flows_hm,
+                tx,
+                |cf| account.chargeback(cf),
+                "chargeback",
+            ),
         }
     }
 
     Ok(accounts.into_values().map(AccountResponse::from).collect())
+}
+
+fn handle_dispute<F>(
+    cash_flows_hm: &mut HashMap<u32, CashFlow>,
+    tx: &Transaction,
+    mut f: F,
+    r#type: &str,
+) where
+    F: FnMut(&mut CashFlow),
+{
+    // We assume that if the transaction is not under dispute it is a partner error,
+    // therefore we can ignore the req
+    match cash_flows_hm.get_mut(&tx.tx) {
+        Some(cf) if cf.client == tx.client && cf.under_dispute => {
+            f(cf);
+        }
+        Some(_) => {
+            log::warn!(
+                "tx {}: received a {} request for a transaction that is not under dispute or related to wrong client",
+                tx.tx,
+                r#type
+            )
+        }
+        _ => {
+            log::warn!(
+                "tx {}: received a {} request for a transaction that does not exist",
+                tx.tx,
+                r#type
+            )
+        }
+    }
 }
 
 #[cfg(test)]
