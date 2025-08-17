@@ -18,9 +18,6 @@ pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
         .deserialize::<Transaction>()
         .collect::<Result<Vec<_>, csv::Error>>()?;
 
-    // Before performing any processing and create account inconsistencies, we validate the entire input file
-    validate_transactions(&transactions)?;
-
     let mut writer = Writer::from_writer(io::stdout());
 
     let accounts = register_transactions_for_customers(&transactions)?;
@@ -37,13 +34,15 @@ pub fn parser(path: String) -> Result<(), Box<dyn Error>> {
 fn register_transactions_for_customers(
     transactions: &[Transaction],
 ) -> anyhow::Result<Vec<AccountResponse>> {
-    //TODO: change this to dto
     let mut accounts: HashMap<u16, Account> = HashMap::new();
     let mut cash_flows: HashMap<u32, CashFlow> = transactions
         .iter()
         .filter_map(|t| CashFlow::try_from(t).ok())
         .map(|cf| (cf.tx, cf))
         .collect();
+
+    // Before performing any processing and create account inconsistencies, we validate the entire input file
+    validate_transactions(cash_flows.values().collect())?;
 
     for tx in transactions {
         let account = accounts
@@ -313,6 +312,60 @@ mod tests {
         }];
 
         let actual = register_transactions_for_customers(&transactions).unwrap();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_handle_dispute_for_wrong_client() {
+        let client = 1;
+
+        let tx1 = Transaction {
+            r#type: TransactionType::Deposit,
+            client,
+            tx: 1,
+            amount: Some(dec!(10)),
+        };
+
+        let tx2 = Transaction {
+            r#type: TransactionType::Dispute,
+            client,
+            tx: 1,
+            amount: None,
+        };
+
+        // Receiving a chargeback for right transaction but wrong client
+        let tx3 = Transaction {
+            r#type: TransactionType::Chargeback,
+            client: 2,
+            tx: 1,
+            amount: None,
+        };
+
+        let transactions = vec![tx1, tx2, tx3];
+
+        let accounts = vec![
+            AccountResponse {
+                client,
+                available: dec!(0),
+                held: dec!(10),
+                total: dec!(10),
+                locked: false,
+            },
+            AccountResponse {
+                client: 2,
+                available: dec!(0),
+                held: dec!(0),
+                total: dec!(0),
+                locked: false,
+            },
+        ];
+
+        let processed_accounts = register_transactions_for_customers(&transactions).unwrap();
+
+        // as we don't mind about the order of the resuls
+        let actual: HashSet<_> = processed_accounts.into_iter().collect();
+        let expected: HashSet<_> = accounts.into_iter().collect();
 
         assert_eq!(actual, expected)
     }

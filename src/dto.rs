@@ -1,5 +1,4 @@
-use anyhow::anyhow;
-use rust_decimal::{Decimal, dec};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 use crate::domain::Account;

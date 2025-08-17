@@ -1,6 +1,5 @@
 use anyhow::anyhow;
 use rust_decimal::{Decimal, dec};
-use serde::Serialize;
 
 use crate::dto::{Transaction, TransactionType};
 
@@ -8,8 +7,8 @@ pub struct CashFlow {
     r#type: CashFlowType,
     pub client: u16,
     pub tx: u32,
-    amount: Decimal,
-    /// Whether the transaction is under_dispute, use to check when we receive a resolve or chargeback
+    pub amount: Decimal,
+    /// Whether the cash flow is under_dispute, use to check when we receive a resolve or chargeback
     pub under_dispute: bool,
 }
 
@@ -57,9 +56,8 @@ impl TryFrom<&Transaction> for CashFlow {
 }
 
 /// A snapshot of clients' accounts after processing the transactions
-#[derive(Debug, Default, PartialEq, Eq, Hash, Serialize)] //TODO: remove ser
+#[derive(Default, PartialEq, Eq, Hash)]
 pub struct Account {
-    //TODO: output with 4 decimal places
     pub client: u16,
     pub available: Decimal,
     pub held: Decimal,
