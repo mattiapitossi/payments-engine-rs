@@ -4,6 +4,8 @@ This document is a high-level description of the architecture of the payment eng
 
 Payment engine is responsible for processing customer transaction requests. Each data batch (stored in a CSV file), contains different transactions that will be validated upfront. The first service validates the transaction batch by ensuring that each record follows the requirements; if any of the transaction fails the validation the whole request will be discarded.
 
+The service responsible for processing the request is the engine, which handles each type of transaction and acts as a dispatcher that process each request. The engine is also a robust system, that checks if a transaction dispute, resolution, or chargeback belongs to a specific customer before processing the request.
+
 
 ## Technical Features
 
