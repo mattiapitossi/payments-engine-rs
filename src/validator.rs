@@ -4,6 +4,7 @@ use anyhow::anyhow;
 
 use crate::dto::{Transaction, TransactionType};
 
+/// Validates a batch of transactions
 pub fn validate_transactions(transactions: &[Transaction]) -> anyhow::Result<()> {
     let deposits_and_withdrawals: Vec<&Transaction> = transactions
         .iter()

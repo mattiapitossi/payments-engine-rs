@@ -74,7 +74,6 @@ fn register_transactions_for_customers(
                 match cash_flows_hm.get_mut(&tx.tx) {
                     Some(cf) if cf.client == tx.client && !cf.under_dispute => {
                         account.dispute(cf);
-                        cf.under_dispute(true);
                     }
                     Some(cf) if cf.client == tx.client => {
                         log::warn!(
@@ -96,7 +95,6 @@ fn register_transactions_for_customers(
                 match cash_flows_hm.get_mut(&tx.tx) {
                     Some(cf) if cf.client == tx.client && cf.under_dispute => {
                         account.resolve(cf);
-                        cf.under_dispute(false);
                     }
                     _ => {
                         log::warn!(
@@ -108,11 +106,10 @@ fn register_transactions_for_customers(
             }
             TransactionType::Chargeback => {
                 // We assume that if the transaction is not under dispute it is a partner error,
-                // therefore we can ignore the Chargeback req
+                // therefore we can ignore the chargeback req
                 match cash_flows_hm.get_mut(&tx.tx) {
                     Some(cf) if cf.client == tx.client && cf.under_dispute => {
                         account.chargeback(cf);
-                        cf.under_dispute(false);
                     }
                     _ => {
                         log::warn!(

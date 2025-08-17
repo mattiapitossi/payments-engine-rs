@@ -19,12 +19,6 @@ pub enum CashFlowType {
     Withdrawal,
 }
 
-impl CashFlow {
-    pub fn under_dispute(&mut self, value: bool) {
-        self.under_dispute = value
-    }
-}
-
 impl TryFrom<&Transaction> for CashFlow {
     type Error = anyhow::Error;
 
@@ -99,26 +93,33 @@ impl Account {
         }
     }
 
-    pub fn dispute(&mut self, cf: &CashFlow) {
+    pub fn dispute(&mut self, cf: &mut CashFlow) {
         let amount = cf.amount;
         self.available -= amount;
         self.held += amount;
         //total remains the same as we are only moving from available to held
+
+        cf.under_dispute = true
     }
 
-    pub fn resolve(&mut self, cf: &CashFlow) {
+    pub fn resolve(&mut self, cf: &mut CashFlow) {
         let amount = cf.amount;
         self.held -= amount;
         self.available += amount;
+
+        cf.under_dispute = false
     }
 
     /// A chargeback related to a transaction, if this occurs the account will be locked
     /// preventing user to perform additional operations
-    pub fn chargeback(&mut self, cf: &CashFlow) {
+    pub fn chargeback(&mut self, cf: &mut CashFlow) {
         let amount = cf.amount; // We are assuming that a dispute can lead to a negative balance (e.g., due to a subsequent
         // withdrawal), therefore we lock the account for the investigations
         self.locked = true;
         self.held -= amount;
         self.total -= amount;
+
+        //finally we mark the cash flow as no more under dispute
+        cf.under_dispute = false
     }
 }
