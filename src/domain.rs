@@ -6,6 +6,7 @@ use crate::dto::{Transaction, TransactionType};
 pub struct CashFlow {
     r#type: CashFlowType,
     pub client: u16,
+    /// Global unique id
     pub tx: u32,
     pub amount: Decimal,
     /// Whether the cash flow is under_dispute, use to check when we receive a resolve or chargeback

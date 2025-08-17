@@ -7,9 +7,7 @@ use crate::domain::Account;
 pub struct Transaction {
     pub r#type: TransactionType,
     pub client: u16,
-    /// The globally unique id of the transaction
     pub tx: u32,
-    /// Amount is required only for deposit or a withdrawal
     pub amount: Option<Decimal>,
 }
 

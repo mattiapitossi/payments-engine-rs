@@ -1,10 +1,11 @@
 # payments-engine-rs
-An implementation of a payment engine to process transactions and update client accounts
+An implementation of a payment engine to process transactions and update client accounts. See ARCHITECTURE.md in docs for additional design info.
 
 
-## :rocket features 
+## :rocket: features 
 - CLI powered by clap to offer a intuitive interface
 - Logging without exposing sensitive information
+- Input validation to ensure consistency across accounts
 
 ## requirements 
 
@@ -15,9 +16,9 @@ The input CSV should have 4 columns:
 - amount: decimal value with up to 4 decimal places, required only for deposit and withdrawal. 
 
 Validations:
-- the type should be one of the supported ones with lowercase format, if the CSV contains a different transaction the process will fail
-- the transaction id should be unique, if two or more transactions have the same id the process will fail
-- the amount is mandatory for deposit or withdrawal, if it's missing or has a negative value the process will fail
+- the type should be one of the supported ones with lowercase format, if the CSV contains a different transaction type the process will fail
+- the transaction id should be unique, if two or more transactions (related to deposit or withdrawal) have the same id the process will fail
+- the amount is mandatory for deposit or withdrawal, if it's missing, has a negative value, or the scale of the amount is greater than 4 the process will fail
 
 if any error occurs, the validation message goes to stdout
 
