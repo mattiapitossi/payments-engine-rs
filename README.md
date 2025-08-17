@@ -27,6 +27,7 @@ Validations:
   - if a dispute, a resolution or chargeback transaction refers to an existing transaction but wrong client the request will be ignored
   - if a resolution or a chargeback transaction refers to an existing transaction and right client, but the transaction is not under dispute the request will be ignored
   - if a dispute, a resolution, or a chargeback contains an amount, the value will be ignored
+  - if a locked account performs additional operations, requests will be ignored
 
 if any blocking error occurs, the validation message goes to stderr
 

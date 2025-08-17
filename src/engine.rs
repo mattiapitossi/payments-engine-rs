@@ -234,6 +234,8 @@ mod tests {
             build_transaction(TransactionType::Deposit, client, 1, Some(dec!(10))),
             build_transaction(TransactionType::Dispute, client, 1, None),
             build_transaction(TransactionType::Chargeback, client, 1, None),
+            build_transaction(TransactionType::Deposit, client, 2, Some(dec!(10))), // to make sure
+                                                                                    // a client cannot perform additional operation
         ];
 
         let expected = vec![AccountResponse {
