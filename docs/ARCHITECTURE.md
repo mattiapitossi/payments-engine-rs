@@ -2,7 +2,7 @@
 
 This document is a high-level description of the architecture of the payment engine.
 
-Payment engine is responsible for processing customers transactions requests. Each data batch (stored in a CSV file), contains different transactions that will be validated upfront. The first service validates the transaction batch by ensuring that each record follows the requirements; if any of the transaction fails the validation the whole request will be discarded.
+Payment engine is responsible for processing customer transaction requests. Each data batch (stored in a CSV file), contains different transactions that will be validated upfront. The first service validates the transaction batch by ensuring that each record follows the requirements; if any of the transaction fails the validation the whole request will be discarded.
 
 
 ## Technical Features

@@ -3,8 +3,22 @@ repos:
     hooks:
       - id: cargo-fmt
         name: cargo-fmt
-        description: Format files with cargo fmt.
+        description: Format files with cargo fmt
         entry: cargo fmt
+        language: system
+        types: [rust]
+        args: ["--"]
+      - id: cargo-clippy
+        name: cargo-clippy
+        description: Runs clippy linter
+        entry: cargo clippy
+        language: system
+        types: [rust]
+        args: ["--"]
+      - id: cargo-audit
+        name: cargo-audit
+        description: Runs a security audit for crates
+        entry: cargo audit
         language: system
         types: [rust]
         args: ["--"]
