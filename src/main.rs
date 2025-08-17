@@ -7,7 +7,6 @@ use clap::Parser;
 mod domain;
 mod dto;
 mod engine;
-mod error;
 mod validator;
 
 #[derive(Parser)]

@@ -56,19 +56,12 @@ fn register_transactions_for_customers(
         }
 
         match tx.r#type {
-            TransactionType::Deposit => {
-                account
-                    .deposit(&tx.try_into()?)
-                    .map_err(|_| anyhow!("a generic error has occurred"))?; // Since we are
-                // inserting a deposit transaction, any error is related to wrong usage of the method. We don't
-                // want to propagate it to the client
-            }
-            TransactionType::Withdrawal => {
-                account
-                    .withdraw(&tx.try_into()?)
-                    .map_err(|_| anyhow!("a generic erro has occurred"))?; // Since we are
-                // inserting a Withdrawal transaction, any error is related to wrong usage of the method. We don't
-                // want to propagate it to the client
+            TransactionType::Deposit | TransactionType::Withdrawal => {
+                match cash_flows.get(&tx.tx) {
+                    Some(cf) => account.insert(cf),
+                    _ => Err(anyhow!("a generic error has occurred"))?, // this should never happen
+                                                                        // as we stored all the transactions into the cash flows
+                }
             }
             TransactionType::Dispute => {
                 // We assume that a dispute for a non-existing transaction can be ignored since is

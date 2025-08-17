@@ -1,10 +1,7 @@
 use anyhow::anyhow;
 use rust_decimal::{Decimal, dec};
 
-use crate::{
-    dto::{Transaction, TransactionType},
-    error::Error,
-};
+use crate::dto::{Transaction, TransactionType};
 
 pub struct CashFlow {
     r#type: CashFlowType,
@@ -78,25 +75,13 @@ impl Account {
         self
     }
 
-    pub fn deposit(&mut self, cf: &CashFlow) -> Result<(), Error> {
+    pub fn insert(&mut self, cf: &CashFlow) {
         match cf.r#type {
             CashFlowType::Deposit => {
                 let amount = cf.amount;
                 self.available += amount;
                 self.total = self.available + self.held;
-                Ok(())
             }
-            _ => {
-                log::error!("performing a deposit with a cash flow of wrong type");
-                Err(Error::OperationNotAllowedError)
-            }
-        }
-    }
-
-    pub fn withdraw(&mut self, cf: &CashFlow) -> Result<(), Error> {
-        // We are assuming that this should not block the operations, a customer that requires more
-        // than the available results in ignoring the operation and logging the error
-        match cf.r#type {
             CashFlowType::Withdrawal => {
                 let amount = cf.amount;
                 if amount <= self.available {
@@ -108,11 +93,6 @@ impl Account {
                         self.client
                     )
                 }
-                Ok(())
-            }
-            _ => {
-                log::error!("performing a withdrawal with a cash flow of wrong type");
-                Err(Error::OperationNotAllowedError)
             }
         }
     }
