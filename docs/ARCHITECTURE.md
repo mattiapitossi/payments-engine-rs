@@ -24,6 +24,8 @@ The service responsible for processing the request is the engine, which handles 
 
 The memory usage for the processing could be improved by streaming data instead of loading everything upfront, this has the downside that the whole batch cannot be validated (e.g. uniqueness of some data) unless we store and check against a DB. A huge dataset could also contain, for example, a wrong amount as the last record, this would mean processing the whole batch and fail at the end.
 
+NOTE: please see the branch feat/streaming-alternative for a streaming solution proposal
+
 ## Future Work
 
 A persistence layer could be added to store the domain entity data, the dispute and the subsequent resolution or the chargeback could also be stored and represented by a different domain entity to track and let the cash flow be responsible of tracking only a transaction where the amount is present and if it's under dispute. 
