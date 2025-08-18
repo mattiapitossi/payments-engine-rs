@@ -4,10 +4,11 @@ use rust_decimal::{Decimal, dec};
 use crate::dto::{Transaction, TransactionType};
 
 pub struct CashFlow {
-    r#type: CashFlowType,
+    pub r#type: CashFlowType,
     /// Global unique id of the client
     pub client: u16,
     /// Global unique id of the transaction
+    #[allow(dead_code)]
     pub tx: u32,
     pub amount: Decimal,
     /// Whether the cash flow is under dispute, use to check if there's a dispute request when we receive a resolve or charge back
@@ -55,7 +56,7 @@ impl TryFrom<&Transaction> for CashFlow {
 }
 
 /// A snapshot of clients' accounts after processing the transactions
-#[derive(Default, PartialEq, Eq, Hash)]
+#[derive(Default, PartialEq, Eq, Hash, Debug)]
 pub struct Account {
     pub client: u16,
     pub available: Decimal,

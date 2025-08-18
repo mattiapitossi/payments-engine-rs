@@ -5,7 +5,6 @@ use clap::Parser;
 mod domain;
 mod dto;
 mod engine;
-mod validator;
 
 #[derive(Parser)]
 struct Cli {

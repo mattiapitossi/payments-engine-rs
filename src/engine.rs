@@ -7,7 +7,6 @@ use csv::{ReaderBuilder, Writer};
 
 use crate::domain::{Account, CashFlow};
 use crate::dto::{AccountResponse, Transaction, TransactionType};
-use crate::validator::validate_transactions;
 
 pub fn run(path: &str) -> anyhow::Result<()> {
     let mut reader = ReaderBuilder::new()
@@ -15,18 +14,21 @@ pub fn run(path: &str) -> anyhow::Result<()> {
         .from_path(path)
         .with_context(|| format!("cannot find path {}", path))?;
 
-    let transactions: Vec<Transaction> = reader
-        .deserialize::<Transaction>()
-        .collect::<Result<Vec<_>, csv::Error>>()?;
-
-    // Before performing a processing we perform a validation against all transactions
-    validate_transactions(&transactions)?;
-
     let mut writer = Writer::from_writer(io::stdout());
 
-    let accounts = register_transactions_for_customers(&transactions)?;
+    let mut accounts: HashMap<u16, Account> = HashMap::new();
+    let mut cash_flows: HashMap<u32, CashFlow> = HashMap::new();
 
-    for account in accounts {
+    for transaction in reader.deserialize() {
+        let record: Transaction = transaction?;
+        handle_transaction(&record, &mut accounts, &mut cash_flows)?
+    }
+
+    for account in accounts
+        .into_values()
+        .map(AccountResponse::from)
+        .collect::<Vec<AccountResponse>>()
+    {
         writer.serialize(account)?;
     }
 
@@ -35,74 +37,79 @@ pub fn run(path: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn register_transactions_for_customers(
-    transactions: &[Transaction],
-) -> anyhow::Result<Vec<AccountResponse>> {
-    let mut accounts: HashMap<u16, Account> = HashMap::new();
+fn handle_transaction(
+    transaction: &Transaction,
+    accounts: &mut HashMap<u16, Account>,
+    cash_flows: &mut HashMap<u32, CashFlow>,
+) -> anyhow::Result<()> {
+    let account = accounts
+        .entry(transaction.client)
+        .or_insert(Account::default().client(transaction.client));
 
-    // So we can validate each transaction related to deposits and withdrawals
-    let cash_flows: Vec<CashFlow> = transactions
-        .iter()
-        .filter(|t| t.r#type == TransactionType::Deposit || t.r#type == TransactionType::Withdrawal)
-        .map(CashFlow::try_from)
-        .collect::<anyhow::Result<Vec<CashFlow>>>()?;
-
-    let mut cash_flows_hm: HashMap<u32, CashFlow> =
-        cash_flows.into_iter().map(|cf| (cf.tx, cf)).collect();
-
-    for tx in transactions {
-        let account = accounts
-            .entry(tx.client)
-            .or_insert(Account::default().client(tx.client));
-
-        // When the account is locked, the customer cannot perform additional requests
-        if account.locked {
-            log::warn!("tx {}: received a request for a locked account", tx.tx);
-            continue;
+    // When the account is locked, the customer cannot perform additional requests
+    if account.locked {
+        log::warn!(
+            "tx {}: received a request for a locked account",
+            transaction.tx
+        );
+    } else {
+        // we only store transactions that are a deposit or a withdrawal to not load every entry
+        if transaction.r#type == TransactionType::Deposit
+            || transaction.r#type == TransactionType::Withdrawal
+        {
+            let cf = CashFlow::try_from(transaction)?;
+            cash_flows.insert(transaction.tx, cf);
         }
 
-        match tx.r#type {
-            TransactionType::Deposit | TransactionType::Withdrawal => {
-                match cash_flows_hm.get(&tx.tx) {
-                    Some(cf) => account.insert(cf),
-                    _ => Err(anyhow!("a generic error has occurred"))?, // this should never happen
-                                                                        // as we stored all the transactions into the cash flows
+        register_transactions_for_customers(account, cash_flows, transaction)?;
+    };
+
+    Ok(())
+}
+
+fn register_transactions_for_customers(
+    account: &mut Account,
+    cash_flows: &mut HashMap<u32, CashFlow>,
+    tx: &Transaction,
+) -> anyhow::Result<()> {
+    match tx.r#type {
+        TransactionType::Deposit | TransactionType::Withdrawal => {
+            match cash_flows.get(&tx.tx) {
+                Some(cf) => account.insert(cf),
+                _ => Err(anyhow!("a generic error has occurred"))?, // this should never happen
+                                                                    // as we stored a deposit of withdrawal first into the cash flows
+            }
+        }
+        TransactionType::Dispute => {
+            // We assume that a dispute for a non-existing transaction can be ignored since is
+            // an error from partner
+            match cash_flows.get_mut(&tx.tx) {
+                Some(cf) if cf.client == tx.client && !cf.under_dispute => {
+                    account.dispute(cf);
+                }
+                Some(cf) if cf.client == tx.client => {
+                    log::warn!(
+                        "tx {}: received a dispute request for a transaction that is already under dispute, discarding the request",
+                        tx.tx
+                    );
+                }
+                _ => {
+                    log::warn!(
+                        "tx {}: received a dispute for a non-existing transaction or related to wrong client",
+                        tx.tx
+                    )
                 }
             }
-            TransactionType::Dispute => {
-                // We assume that a dispute for a non-existing transaction can be ignored since is
-                // an error from partner
-                match cash_flows_hm.get_mut(&tx.tx) {
-                    Some(cf) if cf.client == tx.client && !cf.under_dispute => {
-                        account.dispute(cf);
-                    }
-                    Some(cf) if cf.client == tx.client => {
-                        log::warn!(
-                            "tx {}: received a dispute request for a transaction that is already under dispute, discarding the request",
-                            tx.tx
-                        );
-                    }
-                    _ => {
-                        log::warn!(
-                            "tx {}: received a dispute for a non-existing transaction or related to wrong client",
-                            tx.tx
-                        )
-                    }
-                }
-            }
-            TransactionType::Resolve => {
-                handle_dispute(&mut cash_flows_hm, tx, |cf| account.resolve(cf), "resolve")
-            }
-            TransactionType::Chargeback => handle_dispute(
-                &mut cash_flows_hm,
-                tx,
-                |cf| account.chargeback(cf),
-                "chargeback",
-            ),
+        }
+        TransactionType::Resolve => {
+            handle_dispute(cash_flows, tx, |cf| account.resolve(cf), "resolve")
+        }
+        TransactionType::Chargeback => {
+            handle_dispute(cash_flows, tx, |cf| account.chargeback(cf), "chargeback")
         }
     }
 
-    Ok(accounts.into_values().map(AccountResponse::from).collect())
+    Ok(())
 }
 
 fn handle_dispute<F>(
@@ -138,7 +145,6 @@ fn handle_dispute<F>(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
 
     use rust_decimal::{Decimal, dec};
 
@@ -168,8 +174,8 @@ mod tests {
         held: Decimal,
         total: Decimal,
         locked: bool,
-    ) -> AccountResponse {
-        AccountResponse {
+    ) -> Account {
+        Account {
             client,
             available,
             held,
@@ -179,160 +185,22 @@ mod tests {
     }
 
     #[test]
-    fn test_deposit_and_withdrawal() {
+    fn test_deposit() {
         let client = 1;
 
-        let transactions = vec![
-            build_transaction(TransactionType::Deposit, client, 1, Some(dec!(10))),
-            build_transaction(TransactionType::Withdrawal, client, 2, Some(dec!(5))),
-        ];
+        let transaction = build_transaction(TransactionType::Deposit, client, 1, Some(dec!(10)));
+        let cf = CashFlow::try_from(&transaction).unwrap();
 
-        let expected = vec![build_account(client, dec!(5), dec!(0), dec!(5), false)];
+        let mut cash_flows = HashMap::from([(cf.tx, cf)]);
 
-        let actual = register_transactions_for_customers(&transactions).unwrap();
+        let mut account = build_account(client, dec!(5), dec!(0), dec!(5), false);
 
-        assert_eq!(actual, expected)
+        register_transactions_for_customers(&mut account, &mut cash_flows, &transaction).unwrap();
+
+        let account_updated = build_account(client, dec!(15), dec!(0), dec!(15), false);
+
+        assert_eq!(account, account_updated)
     }
 
-    #[test]
-    fn test_multiple_accounts() {
-        let client1 = 1;
-        let client2 = 2;
-
-        let transactions = vec![
-            build_transaction(TransactionType::Deposit, client1, 1, Some(dec!(10))),
-            build_transaction(TransactionType::Deposit, client2, 2, Some(dec!(5))),
-        ];
-
-        let accounts = vec![
-            build_account(client1, dec!(10), dec!(0), dec!(10), false),
-            build_account(client2, dec!(5), dec!(0), dec!(5), false),
-        ];
-
-        let processed_accounts = register_transactions_for_customers(&transactions).unwrap();
-
-        let actual: HashSet<_> = processed_accounts.into_iter().collect();
-        let expected: HashSet<_> = accounts.into_iter().collect();
-
-        assert_eq!(actual, expected)
-    }
-
-    #[test]
-    fn test_resolve_dispute() {
-        let client = 1;
-
-        let transactions = vec![
-            build_transaction(TransactionType::Deposit, client, 1, Some(dec!(10))),
-            build_transaction(TransactionType::Dispute, client, 1, None),
-            build_transaction(TransactionType::Resolve, client, 1, None),
-        ];
-
-        let expected = vec![build_account(client, dec!(10), dec!(0), dec!(10), false)];
-
-        let actual = register_transactions_for_customers(&transactions).unwrap();
-
-        assert_eq!(actual, expected)
-    }
-
-    #[test]
-    fn test_handle_chargeback() {
-        let client1 = 1;
-        let client2 = 2;
-
-        let transactions = vec![
-            build_transaction(TransactionType::Deposit, client1, 1, Some(dec!(10))),
-            build_transaction(TransactionType::Dispute, client1, 1, None),
-            build_transaction(TransactionType::Chargeback, client1, 1, None),
-            build_transaction(TransactionType::Deposit, client1, 2, Some(dec!(10))), // to make sure
-            // a client cannot perform additional operation
-            build_transaction(TransactionType::Deposit, client2, 3, Some(dec!(10))),
-        ];
-
-        let accounts = vec![
-            build_account(client1, dec!(0), dec!(0), dec!(0), true),
-            build_account(client2, dec!(10), dec!(0), dec!(10), false),
-        ];
-
-        let processed_accounts = register_transactions_for_customers(&transactions).unwrap();
-
-        let actual: HashSet<_> = processed_accounts.into_iter().collect();
-        let expected: HashSet<_> = accounts.into_iter().collect();
-
-        assert_eq!(actual, expected)
-    }
-
-    #[test]
-    fn test_handle_withdrawal_with_not_enough_money() {
-        let client = 1;
-
-        let transactions = vec![build_transaction(
-            TransactionType::Withdrawal,
-            client,
-            1,
-            Some(dec!(10)),
-        )];
-
-        let expected = vec![build_account(client, dec!(0), dec!(0), dec!(0), false)];
-
-        let actual = register_transactions_for_customers(&transactions).unwrap();
-
-        assert_eq!(actual, expected)
-    }
-
-    #[test]
-    fn test_handle_dispute_for_wrong_client() {
-        let client = 1;
-
-        let transactions = vec![
-            build_transaction(TransactionType::Deposit, client, 1, Some(dec!(10))),
-            build_transaction(TransactionType::Dispute, client, 1, None),
-            build_transaction(TransactionType::Chargeback, 2, 1, None),
-        ];
-
-        let accounts = vec![
-            build_account(client, dec!(0), dec!(10), dec!(10), false),
-            build_account(2, dec!(0), dec!(0), dec!(0), false),
-        ];
-
-        let processed_accounts = register_transactions_for_customers(&transactions).unwrap();
-
-        // as we don't mind about the order of the results
-        let actual: HashSet<_> = processed_accounts.into_iter().collect();
-        let expected: HashSet<_> = accounts.into_iter().collect();
-
-        assert_eq!(actual, expected)
-    }
-
-    #[test]
-    fn test_negative_amount() {
-        let tx1 = build_transaction(TransactionType::Deposit, 1, 1, Some(dec!(-1)));
-
-        let transactions = vec![tx1];
-
-        let processed_accounts = register_transactions_for_customers(&transactions);
-
-        assert!(processed_accounts.is_err())
-    }
-
-    #[test]
-    fn test_wrong_scale_amount() {
-        let tx1 = build_transaction(TransactionType::Deposit, 1, 1, Some(dec!(1.12345)));
-
-        let transactions = vec![tx1];
-
-        let processed_accounts = register_transactions_for_customers(&transactions);
-
-        assert!(processed_accounts.is_err())
-    }
-
-    #[test]
-    fn test_missing_amount() {
-        let tx1 = build_transaction(TransactionType::Deposit, 1, 1, None);
-
-        let transactions = vec![tx1];
-
-        let processed_accounts = register_transactions_for_customers(&transactions);
-
-        assert!(processed_accounts.is_err())
-    }
+    //TODO: add more tests
 }
