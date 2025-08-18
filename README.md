@@ -49,4 +49,4 @@ For example, a chargeback can be run as follows:
 
 ## Develop
 
-A Justfile is provided for simplify the development, run `just check` for checking format and a security audit of deps
+A `Justfile` is provided for simplify the development, run `just check` for checking format and run security audit of deps
