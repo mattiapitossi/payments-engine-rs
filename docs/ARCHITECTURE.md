@@ -11,13 +11,13 @@ The service responsible for processing the request is the engine, which handles 
 
 - CLI: to offer a comprehensive set of features, clap was used to offer the help and usage functionalities.
 - Logs: logs are also available to help the developers in debugging errors. Notice that internal errors that are not related to wrong inputs are not exposed to the client.
-- Errors: Anyhow is used to simplify the errors propagation. Errors related to a wrong input are written on stdout.
+- Errors: Anyhow is used to simplify the errors propagation. Errors related to a wrong input are written on stderr.
 - Domain entities validate against wrong usage of the methods, from a engine perspective we know the transaction type, but if used outside we should be careful to not accept wrong operations.
 
 
 ## Domain Entities
 
-- `CashFlow`: a cash flow entity represents either a deposit or a withdrawal transaction, has an under dispute attribute to track the status of a dispute filled by the customer. The amount is not optional in this case. Storing deposit and withdrawal transactions into cash flow entity also allows to perform and upfront validation and subsequently make safe assumptions about these two entities.
+- `CashFlow`: a cash flow entity represents either a deposit or a withdrawal transaction, has an under dispute attribute to track the status of a dispute filled by the customer (this can also be used for streaming to not store every dispute). The amount is not optional in this case. Storing deposit and withdrawal transactions into cash flow entity also allows to perform and upfront validation and subsequently make safe assumptions about these two operations.
 - `Account`: an account represents the latest snapshot of the customer holdings.
 
 ## Data Streaming Considerations
