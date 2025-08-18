@@ -1,5 +1,5 @@
 # payments-engine-rs
-An implementation of a payment engine to process transactions and update client accounts. See `ARCHITECTURE.md` in docs for additional design info.
+An implementation of a payment engine to process transactions and update client accounts. See [architecture docs](docs/ARCHITECTURE.md) for additional design info.
 
 
 ## :rocket: features 
@@ -7,7 +7,7 @@ An implementation of a payment engine to process transactions and update client 
 - Logging without exposing sensitive information
 - Input validation to ensure consistency across accounts
 
-## requirements 
+## Requirements 
 
 The input CSV should have 4 columns:
 - type: which can be `deposit`, `withdrawal`, `dispute`, `resolve`, `chargeback`
@@ -35,7 +35,7 @@ if any blocking error occurs, the validation message goes to stderr. This is to 
 - example err when transaction ids are not unique: `Error: Transaction ids are not unique!`
 
 
-## examples
+## Examples
 
 The project includes an examples folder that can be used to run the program:
 
@@ -43,10 +43,10 @@ For example, a chargeback can be run as follows:
 
 `cargo run -- examples/chargeback.csv > out.csv`
 
-## roadmap
+## Roadmap
 - DB layer for persistence
 - REST API to communicate via network
 
-## develop
+## Develop
 
 A Justfile is provided for simplify the development, run `just check` for checking format and a security audit of deps
