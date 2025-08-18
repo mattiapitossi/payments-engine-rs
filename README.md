@@ -2,7 +2,7 @@
 An implementation of a payment engine to process transactions and update client accounts. See [architecture docs](docs/ARCHITECTURE.md) for additional design info.
 
 
-## :rocket: features 
+## Features 
 - CLI powered by clap to offer a intuitive interface
 - Logging without exposing sensitive information
 - Input validation to ensure consistency across accounts
